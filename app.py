@@ -226,4 +226,4 @@ else:
         if len(alert_msgs) == 0:
             st.info("No alerts — no stock has reached the target profit yet.")
         else:
-            body = "Auto-Advisor Alert - target profit reached
+            body = "Auto-Advisor Alert - target profit reached"
