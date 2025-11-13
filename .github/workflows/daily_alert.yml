@@ -2,8 +2,7 @@ name: 📈 Daily Stock Alert
 
 on:
   schedule:
-    # Runs every day at 6:30 AM (India Time)
-    - cron: '0 1 * * *'
+    - cron: "30 3 * * *"
   workflow_dispatch:  # allows you to manually run it from Actions tab
 
 jobs:
