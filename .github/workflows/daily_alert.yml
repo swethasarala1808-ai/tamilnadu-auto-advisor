@@ -1,0 +1,35 @@
+name: 📈 Daily Stock Alert
+
+on:
+  schedule:
+    # Runs every day at 6:30 AM (India Time)
+    - cron: '0 1 * * *'
+  workflow_dispatch:  # allows you to manually run it from Actions tab
+
+jobs:
+  send-alerts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: ⚙️ Install dependencies
+        run: |
+          pip install yfinance
+
+      - name: 📬 Run daily stock check
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          WATCHLIST: ${{ secrets.WATCHLIST }}
+          BUY_PRICES: ${{ secrets.BUY_PRICES }}
+          TARGET_PCT: ${{ secrets.TARGET_PCT }}
+        run: |
+          python daily_check.py
