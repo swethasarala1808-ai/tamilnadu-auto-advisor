@@ -227,3 +227,29 @@ else:
             st.info("No alerts — no stock has reached the target profit yet.")
         else:
             body = "Auto-Advisor Alert - target profit reached"
+                 # ------------------------------
+# 📧 Auto Email Alert (Optional)
+# ------------------------------
+import smtplib
+from email.mime.text import MIMEText
+
+def send_email_alert(stock, change, advice):
+    sender = "your_email@gmail.com"  # replace later
+    password = "your_app_password"
+    receiver = "your_email@gmail.com"
+
+    body = f"Auto-Advisor Alert:\nStock: {stock}\nChange: {change:.2f}%\nRecommendation: {advice}"
+    msg = MIMEText(body)
+    msg["Subject"] = "📈 Tamil Nadu Auto-Advisor Daily Alert"
+    msg["From"] = sender
+    msg["To"] = receiver
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender, password)
+        server.send_message(msg)
+        server.quit()
+        st.success("📩 Email alert sent successfully!")
+    except Exception as e:
+        st.error(f"❌ Failed to send email: {e}")
