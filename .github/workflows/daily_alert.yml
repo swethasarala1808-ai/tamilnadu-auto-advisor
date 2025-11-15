@@ -2,50 +2,61 @@ name: Daily Stock Auto Check
 
 on:
   schedule:
-    # Runs every day at 9:00 AM IST (3:30 UTC)
+    # Run daily morning full scan at 09:00 IST (03:30 UTC)
     - cron: "30 3 * * *"
-    # Runs every 30 minutes (SELL alerts check)
-  - cron: "*/30 * * * *"
+    # Run intraday check every 30 minutes (will run both scanner + quick check; reduce if needed)
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write   # allow writing files back to the repo
+
 jobs:
-  run-daily-check:
+  run-check:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout repository (with write token)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
-          pip install yfinance pandas numpy
+          python -m pip install --upgrade pip
+          pip install yfinance pandas numpy requests
 
-      - name: Run full daily scan
+      - name: Run full scanner (produce today_pick.json + candidates.csv)
         env:
           INV_AMOUNT: ${{ secrets.INV_AMOUNT }}
           MIN_AVG_VOLUME: ${{ secrets.MIN_AVG_VOLUME }}
           MOMENTUM_DAYS: ${{ secrets.MOMENTUM_DAYS }}
           BATCH_SIZE: ${{ secrets.BATCH_SIZE }}
           TICKERS_FILE: tickers.csv
-        run: python daily_scan_full.py
-
-      - name: Commit results back
         run: |
-          git config user.email "github-actions@github.com"
-          git config user.name "GitHub Actions"
-          git add today_pick.json candidates.csv
-          git commit -m "Daily pick update" || echo "No changes"
-          git push
+          echo "Running daily_scan_full.py..."
+          python daily_scan_full.py
 
-      - name: Run daily email alerts
+      - name: Commit results (today_pick.json, candidates.csv)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add today_pick.json candidates.csv || true
+          git commit -m "Daily pick update" || echo "No changes to commit"
+          git push || echo "Push failed (check permissions)"
+
+      - name: Run email SELL-check (daily_check.py)
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
           TARGET_PCT: ${{ secrets.TARGET_PCT }}
-        run: python daily_check.py
+        run: |
+          echo "Running daily_check.py to send email alerts if needed..."
+          python daily_check.py
