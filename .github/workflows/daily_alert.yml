@@ -1,34 +1,49 @@
-name: 📈 Daily Stock Alert
+name: Daily Stock Auto Check
 
 on:
   schedule:
+    # Runs every day at 9:00 AM IST (3:30 UTC)
     - cron: "30 3 * * *"
-  workflow_dispatch:  # allows you to manually run it from Actions tab
+  workflow_dispatch:
 
 jobs:
-  send-alerts:
+  run-daily-check:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
-      - name: ⚙️ Install dependencies
+      - name: Install dependencies
         run: |
-          pip install yfinance
+          pip install yfinance pandas numpy
 
-      - name: 📬 Run daily stock check
+      - name: Run full daily scan
+        env:
+          INV_AMOUNT: ${{ secrets.INV_AMOUNT }}
+          MIN_AVG_VOLUME: ${{ secrets.MIN_AVG_VOLUME }}
+          MOMENTUM_DAYS: ${{ secrets.MOMENTUM_DAYS }}
+          BATCH_SIZE: ${{ secrets.BATCH_SIZE }}
+          TICKERS_FILE: tickers.csv
+        run: python daily_scan_full.py
+
+      - name: Commit results back
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add today_pick.json candidates.csv
+          git commit -m "Daily pick update" || echo "No changes"
+          git push
+
+      - name: Run daily email alerts
         env:
           EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-          WATCHLIST: ${{ secrets.WATCHLIST }}
-          BUY_PRICES: ${{ secrets.BUY_PRICES }}
           TARGET_PCT: ${{ secrets.TARGET_PCT }}
-        run: |
-          python daily_check.py
+        run: python daily_check.py
