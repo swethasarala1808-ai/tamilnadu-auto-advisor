@@ -1,10 +1,10 @@
 {
   "date": "2025-11-15",
-  "ticker": "TATASTEEL.NS",
-  "price": 1.00,
-  "momentum": 10,
-  "score": 200,
-  "qty": 10,
-  "cost": 10,
-  "invest_amount": 10
+  "ticker": "LT.NS",
+  "price": 4004.4,
+  "momentum": 3.16,
+  "score": 8072.339657403372,
+  "qty": 0,
+  "cost": 0.0,
+  "invest_amount": 1000.0
 }
