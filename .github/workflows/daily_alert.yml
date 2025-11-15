@@ -4,6 +4,8 @@ on:
   schedule:
     # Runs every day at 9:00 AM IST (3:30 UTC)
     - cron: "30 3 * * *"
+    # Runs every 30 minutes (SELL alerts check)
+  - cron: "*/30 * * * *"
   workflow_dispatch:
 
 jobs:
