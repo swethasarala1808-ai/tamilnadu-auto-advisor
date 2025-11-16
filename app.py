@@ -2,93 +2,73 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import json
-import datetime
 
-st.set_page_config(page_title="TN Stock Advisor – AI Daily Pick", layout="wide")
+st.set_page_config(page_title="TN Stock Advisor – Daily Auto Pick", layout="wide")
 
 # ---------------------------------------------------------
 # HEADER
 # ---------------------------------------------------------
-st.markdown("<h1 style='text-align:center;color:#0078D4;'>📈 Tamil Nadu Stock Market – Daily Auto Advisor</h1>",
-            unsafe_allow_html=True)
-st.write("This app automatically selects the BEST stock to buy each day for maximum profit based on AI scoring.")
+st.markdown(
+    "<h1 style='text-align:center;color:#0078D4;'>📈 Tamil Nadu Stock Market – Daily Auto Advisor</h1>",
+    unsafe_allow_html=True
+)
+st.write("This app shows the BEST stock to buy today based on your investment amount.")
 
 # ---------------------------------------------------------
 # LOAD TODAY'S PICK
 # ---------------------------------------------------------
-st.subheader("📌 Today’s Highest Profit Pick (Auto-Generated)")
+st.subheader("📌 Today’s Best Stock to Buy (Auto-Generated)")
 
 try:
     with open("today_pick.json", "r") as f:
         pick = json.load(f)
 except:
-    st.error("❌ Could not load today’s pick file. Please generate daily pick first.")
+    st.error("❌ Could not load today’s pick file. Please run daily_pick.py first.")
     st.stop()
 
-# ---------------------------------------------------------
-# BASIC DISPLAY
-# ---------------------------------------------------------
-ticker = pick.get("ticker", "N/A")
-price = pick.get("price", 0)
-momentum = pick.get("momentum", 0)
-score = pick.get("score", 0)
+if "error" in pick:
+    st.error("⚠️ No suitable stock found for your amount today.")
+    st.stop()
 
+ticker = pick["ticker"]
+price = pick["price"]
+momentum = pick["momentum"]
+score = pick["score"]
+invest_amount = pick.get("invest_amount", 300)
+qty = pick.get("qty", invest_amount // price)
+
+# ---------------------------------------------------------
+# DISPLAY PICK DETAILS
+# ---------------------------------------------------------
 col1, col2, col3 = st.columns(3)
-col1.metric(label="Stock", value=ticker)
-col2.metric(label="Price (₹)", value=f"{price:.2f}")
-col3.metric(label="Momentum Score", value=f"{momentum:.2f}")
+col1.metric("Stock", ticker)
+col2.metric("Price (₹)", f"{price:.2f}")
+col3.metric("Momentum", f"{momentum:.2f}")
 
-st.metric(label="AI Profit Score", value=f"{score:.2f}")
-
-# ---------------------------------------------------------
-# ESTIMATED PROFIT SECTION (SAFE)
-# ---------------------------------------------------------
-profit = None
-
-# direct JSON fields
-profit = pick.get("profit") or pick.get("estimated_profit") or pick.get("expected_profit")
-
-# if missing compute manually
-if profit is None:
-    buy_price = pick.get("buy_price") or pick.get("entry_price") or pick.get("price")
-    current_price = pick.get("current_price") or pick.get("price")
-
-    try:
-        if buy_price and current_price:
-            profit = ((float(current_price) - float(buy_price)) / float(buy_price)) * 100
-    except:
-        profit = None
-
-if profit is None:
-    st.metric(label="Estimated Profit (%)", value="N/A")
-else:
-    st.metric(label="Estimated Profit (%)", value=f"{profit:.2f}%")
+st.metric("AI Score", f"{score:.2f}")
 
 # ---------------------------------------------------------
-# LIVE PRICE CHART
+# LIVE CHART
 # ---------------------------------------------------------
-st.subheader("📉 Last 10 Days Price Trend")
+st.subheader("📉 Last 5 Days Price Trend")
 
 try:
-    data = yf.download(ticker, period="10d", interval="1d")
+    data = yf.download(ticker, period="5d", interval="1d")
     st.line_chart(data["Close"])
 except:
-    st.warning("⚠️ Unable to load chart data right now.")
+    st.warning("Unable to load chart at this time.")
 
 # ---------------------------------------------------------
 # INVESTMENT CALCULATOR
 # ---------------------------------------------------------
 st.subheader("💰 Investment Calculator")
 
-amount = st.number_input("Enter amount you want to invest (₹)", min_value=100, value=1000)
+amount = st.number_input("Enter your amount (₹)", min_value=50, value=invest_amount)
 
 if price > 0:
-    possible_qty = int(amount // price)
-    st.write(f"👉 With ₹{amount}, you can buy **{possible_qty} shares** of **{ticker}**.")
+    qty_calc = int(amount // price)
+    st.write(f"👉 You can buy **{qty_calc} shares** of **{ticker}** with ₹{amount}.")
 else:
     st.write("Price unavailable.")
 
-# ---------------------------------------------------------
-# FOOTER
-# ---------------------------------------------------------
-st.caption("Auto-Advisor • Powered by NSE/BSE Yahoo Finance • Daily AI Stock Selection")
+st.caption("Auto-Advisor • Daily AI Stock Selection • Best Stock Under Your Budget")
