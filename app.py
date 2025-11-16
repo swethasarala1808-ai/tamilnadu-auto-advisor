@@ -46,9 +46,32 @@ pick = load_today_pick()
 if pick:
     st.success(f"📌 **Best Stock to Buy Today:** {pick['ticker']}")
 
-    st.metric(
-        label="📈 Expected Profit (%) Today",
-        value=f"{pick['profit']:.2f}%"
+    # --- Safe profit display: handle missing or different JSON keys ---
+# Try common keys in today_pick.json: profit OR compute from price/buy_price if available
+
+profit = None
+
+# 1) direct key if present
+if isinstance(pick, dict):
+    profit = pick.get("profit") or pick.get("estimated_profit") or pick.get("expected_profit")
+
+# 2) if not present, try compute from known fields (price & buy_price)
+if profit is None:
+    # support older JSON shapes: {"ticker"/"symbol","price"/"buy_price"}
+    buy_price = pick.get("buy_price") or pick.get("price") or pick.get("entry_price")
+    current_price = pick.get("current_price") or pick.get("price") or None
+    # if we have buy_price and current_price compute a simple percent (best-effort)
+    try:
+        if buy_price is not None and current_price is not None:
+            profit = ((float(current_price) - float(buy_price)) / float(buy_price)) * 100
+    except Exception:
+        profit = None
+
+# 3) show metric (N/A when not available)
+if profit is None:
+    st.metric(label="Estimated Profit (%)", value="N/A")
+else:
+    st.metric(label="Estimated Profit (%)", value=f"{float(profit):.2f}%")"
     )
 
     st.info(f"📝 **Reason:** {pick['reason']}")
