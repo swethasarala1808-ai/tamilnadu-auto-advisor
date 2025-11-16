@@ -1,58 +1,62 @@
 import yfinance as yf
+import pandas as pd
 import json
 import datetime
 
-# Your watchlist of stocks
-WATCHLIST = [
-    "TATASTEEL.NS",
-    "RELIANCE.NS",
-    "INFY.NS",
-    "HDFCBANK.NS",
-    "SBIN.NS",
-    "LT.NS"
-]
+# Load NSE/BSE tickers
+tickers = pd.read_csv("tickers.csv")["symbol"].tolist()
 
-TARGET_PROFIT = 5   # 5% target profit for sell alert
+# User investment amount
+INVEST_AMOUNT = 300   # you can change this later
 
-def choose_best_stock():
-    best_symbol = None
-    best_gain = -999
-    best_buy_price = None
+def score_stock(ticker):
+    try:
+        data = yf.download(ticker, period="10d", interval="1d", progress=False)
+        if data.empty:
+            return None
 
-    for symbol in WATCHLIST:
-        data = yf.download(symbol, period="2d", interval="1d")
-        if len(data) < 2:
-            continue
+        # Basic metrics
+        price = float(data["Close"].iloc[-1])
+        if price > INVEST_AMOUNT:  # skip expensive stocks
+            return None
 
-        prev_close = data["Close"].iloc[-2]
-        today_open = data["Open"].iloc[-1]
+        # Momentum = last close - previous close
+        momentum = price - float(data["Close"].iloc[-2])
 
-        gain = ((today_open - prev_close) / prev_close) * 100
+        # Volatility = standard deviation of 10 days
+        volatility = float(data["Close"].pct_change().std())
 
-        if gain > best_gain:
-            best_gain = gain
-            best_symbol = symbol
-            best_buy_price = today_open
+        # AI Score = momentum * (1 / volatility)
+        score = momentum * (1 / (volatility + 1e-6))
 
-    return best_symbol, best_buy_price, best_gain
+        return {
+            "ticker": ticker,
+            "price": price,
+            "momentum": momentum,
+            "score": score
+        }
+
+    except:
+        return None
 
 
-symbol, buy_price, gain = choose_best_stock()
+best_stock = None
+best_score = -999999
 
-if symbol:
-    today = datetime.date.today().isoformat()
-    data = {
-        "symbol": symbol,
-        "buy_price": float(buy_price),
-        "previous_day_gain": float(gain),
-        "target_profit": TARGET_PROFIT,
-        "date": today
-    }
+for t in tickers:
+    info = score_stock(t)
+    if info and info["score"] > best_score:
+        best_score = info["score"]
+        best_stock = info
+
+# Save result
+if best_stock:
+    best_stock["date"] = str(datetime.date.today())
+    best_stock["invest_amount"] = INVEST_AMOUNT
+    best_stock["qty"] = best_stock["invest_amount"] // best_stock["price"]
 
     with open("today_pick.json", "w") as f:
-        json.dump(data, f, indent=4)
-
-    print("Saved today_pick.json:", data)
-
+        json.dump(best_stock, f, indent=4)
 else:
-    print("No stock selected.")
+    with open("today_pick.json", "w") as f:
+        json.dump({"error": "No suitable stock found"}, f, indent=4)
