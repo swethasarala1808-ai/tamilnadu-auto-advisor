@@ -4,7 +4,7 @@ import datetime
 
 WATCHLIST = ["TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "HDFCBANK.NS", "SBIN.NS", "LT.NS"]
 
-TARGET_PROFIT = 5  # minimum profit % to trigger sell alerts
+TARGET_PROFIT = 5  # 5%
 
 def choose_best_stock():
     best_symbol = None
