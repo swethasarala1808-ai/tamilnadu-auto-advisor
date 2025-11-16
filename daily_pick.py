@@ -1,62 +1,55 @@
 import yfinance as yf
-import pandas as pd
 import json
-import datetime
+import pandas as pd
 
-# Load NSE/BSE tickers
+# Load tickers list
 tickers = pd.read_csv("tickers.csv")["symbol"].tolist()
 
-# User investment amount
-INVEST_AMOUNT = 300   # you can change this later
+BEST = None
 
-def score_stock(ticker):
+def score_stock(symbol):
     try:
-        data = yf.download(ticker, period="10d", interval="1d", progress=False)
+        data = yf.download(symbol, period="6d", interval="1d")
         if data.empty:
             return None
 
-        # Basic metrics
-        price = float(data["Close"].iloc[-1])
-        if price > INVEST_AMOUNT:  # skip expensive stocks
+        close = data["Close"]
+        momentum = (close.iloc[-1] - close.iloc[-3]) / close.iloc[-3] * 100
+        volatility = close.pct_change().std()
+
+        if volatility == 0 or pd.isna(volatility):
             return None
 
-        # Momentum = last close - previous close
-        momentum = price - float(data["Close"].iloc[-2])
-
-        # Volatility = standard deviation of 10 days
-        volatility = float(data["Close"].pct_change().std())
-
-        # AI Score = momentum * (1 / volatility)
-        score = momentum * (1 / (volatility + 1e-6))
-
+        score = momentum / volatility
         return {
-            "ticker": ticker,
-            "price": price,
-            "momentum": momentum,
-            "score": score
+            "symbol": symbol,
+            "price": float(close.iloc[-1]),
+            "momentum": float(momentum),
+            "score": float(score)
         }
-
     except:
         return None
 
 
-best_stock = None
-best_score = -999999
-
+results = []
 for t in tickers:
-    info = score_stock(t)
-    if info and info["score"] > best_score:
-        best_score = info["score"]
-        best_stock = info
+    s = score_stock(t)
+    if s:
+        results.append(s)
 
-# Save result
-if best_stock:
-    best_stock["date"] = str(datetime.date.today())
-    best_stock["invest_amount"] = INVEST_AMOUNT
-    best_stock["qty"] = best_stock["invest_amount"] // best_stock["price"]
+# Save scores for debugging
+pd.DataFrame(results).to_csv("candidates.csv", index=False)
 
-    with open("today_pick.json", "w") as f:
-        json.dump(best_stock, f, indent=4)
+# Pick BEST stock overall (no amount yet)
+results_sorted = sorted(results, key=lambda x: x["score"], reverse=True)
+
+if len(results_sorted) > 0:
+    BEST = results_sorted[0]
 else:
-    with open("today_pick.json", "w") as f:
-        json.dump({"error": "No suitable stock found"}, f, indent=4)
+    BEST = {"error": "No valid stock found."}
+
+# Save best pick
+with open("today_pick.json", "w") as f:
+    json.dump(BEST, f, indent=2)
+
+print("Daily pick saved:", BEST)
