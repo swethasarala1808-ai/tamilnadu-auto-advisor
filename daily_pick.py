@@ -2,9 +2,17 @@ import yfinance as yf
 import json
 import datetime
 
-WATCHLIST = ["TATASTEEL.NS", "RELIANCE.NS", "INFY.NS", "HDFCBANK.NS", "SBIN.NS", "LT.NS"]
+# Your watchlist of stocks
+WATCHLIST = [
+    "TATASTEEL.NS",
+    "RELIANCE.NS",
+    "INFY.NS",
+    "HDFCBANK.NS",
+    "SBIN.NS",
+    "LT.NS"
+]
 
-TARGET_PROFIT = 5  # 5%
+TARGET_PROFIT = 5   # 5% target profit for sell alert
 
 def choose_best_stock():
     best_symbol = None
@@ -28,6 +36,7 @@ def choose_best_stock():
 
     return best_symbol, best_buy_price, best_gain
 
+
 symbol, buy_price, gain = choose_best_stock()
 
 if symbol:
@@ -39,9 +48,11 @@ if symbol:
         "target_profit": TARGET_PROFIT,
         "date": today
     }
+
     with open("today_pick.json", "w") as f:
         json.dump(data, f, indent=4)
 
     print("Saved today_pick.json:", data)
+
 else:
     print("No stock selected.")
