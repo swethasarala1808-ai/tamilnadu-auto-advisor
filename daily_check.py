@@ -2,69 +2,59 @@ import json
 import yfinance as yf
 import smtplib
 from email.mime.text import MIMEText
-from datetime import datetime
 
-# ---------------------------
 # Load today's pick
-# ---------------------------
 with open("today_pick.json", "r") as f:
     pick = json.load(f)
 
-symbol = pick["ticker"]          # FIXED (ticker instead of symbol)
-buy_price = pick["price"]
-invest_amount = pick["invest_amount"]
+# If no pick found
+if "error" in pick:
+    print("No pick found today.")
+    exit()
 
-# ---------------------------
-# Track current price
-# ---------------------------
-data = yf.download(symbol, period="1d", interval="5m")
+symbol = pick["ticker"]
+buy_price = pick["price"]
+target_profit = 5  # default 5% target
+
+# Load email settings
+with open("email_config.json", "r") as f:
+    email_config = json.load(f)
+
+sender = email_config["sender"]
+password = email_config["password"]
+receiver = email_config["receiver"]
+
+# Get current price
+data = yf.download(symbol, period="1d", interval="1m")
 current_price = float(data["Close"].iloc[-1])
 
+# Calculate profit %
 profit_percent = ((current_price - buy_price) / buy_price) * 100
 
-# ---------------------------
-# Load email config
-# ---------------------------
-with open("email_config.json", "r") as f:
-    config = json.load(f)
-
-sender = config["sender"]
-app_password = config["password"]
-receiver = config["receiver"]
-alert_percent = config["target_profit"]
-
-# ---------------------------
 # If reached profit target → send email
-# ---------------------------
-if profit_percent >= alert_percent:
-    msg = MIMEText(
-        f"""
-📈 Auto-Advisor Sell Alert
+if profit_percent >= target_profit:
+    body = f"""
+Your stock {symbol} reached +{profit_percent:.2f}% profit.
 
-Stock: {symbol}
-Buy Price: {buy_price}
-Current Price: {current_price}
-Profit: {profit_percent:.2f}%
+BUY PRICE: ₹{buy_price}
+CURRENT PRICE: ₹{current_price}
 
-It has reached your target profit. You can SELL now.
+👉 Recommended Action: SELL NOW!
 """
-    )
-    msg["Subject"] = "📢 SELL ALERT – Target Profit Reached!"
+    msg = MIMEText(body)
+    msg["Subject"] = f"SELL ALERT: {symbol} +{profit_percent:.2f}% Profit"
     msg["From"] = sender
     msg["To"] = receiver
 
     try:
         server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-        server.login(sender, app_password)
+        server.login(sender, password)
         server.sendmail(sender, receiver, msg.as_string())
         server.quit()
-        print("Email Sent Successfully!")
+        print("Email sent successfully!")
 
     except Exception as e:
         print("Failed to send email:", e)
 
 else:
-    print(
-        f"No alert. Current profit {profit_percent:.2f}% "
-        f"(target is {alert_percent}%)."
-    )
+    print(f"No alert. Current profit = {profit_percent:.2f}%")
