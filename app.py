@@ -32,8 +32,6 @@ ticker = pick.get("ticker", "N/A")
 price = pick.get("price", 0)
 momentum = pick.get("momentum", 0)
 score = pick.get("score", 0)
-qty = pick.get("qty", 0)
-cost = pick.get("cost", 0)
 
 col1, col2, col3 = st.columns(3)
 col1.metric(label="Stock", value=ticker)
@@ -43,12 +41,12 @@ col3.metric(label="Momentum Score", value=f"{momentum:.2f}")
 st.metric(label="AI Profit Score", value=f"{score:.2f}")
 
 # ---------------------------------------------------------
-# ESTIMATED PROFIT SECTION (FULLY SAFE)
+# ESTIMATED PROFIT SECTION (SAFE)
 # ---------------------------------------------------------
 profit = None
 
 # direct JSON fields
-profit = pick.get("profit") or pick.get("expected_profit") or pick.get("estimated_profit")
+profit = pick.get("profit") or pick.get("estimated_profit") or pick.get("expected_profit")
 
 # if missing compute manually
 if profit is None:
