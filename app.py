@@ -113,6 +113,41 @@ except Exception:
 # -----------------------
 st.subheader("💰 Investment Calculator")
 
+amount = st.number_input(
+    "Enter your amount (₹)",
+    min_value=50.0,
+    value=500.0,
+    step=50.0
+)
+
+st.write("### 🔍 Finding best stock you can buy...")
+
+# Load all candidates (scored stocks)
+try:
+    candidates = pd.read_csv("candidates.csv")
+except:
+    st.error("⚠️ candidates.csv not found. Wait for daily scan.")
+    st.stop()
+
+# Filter stocks affordable with your amount
+affordable = candidates[candidates["price"] <= amount]
+
+if affordable.empty:
+    st.warning("No stock available within your amount.")
+    st.stop()
+
+# Choose highest score among affordable stocks
+best_choice = affordable.sort_values(by="score", ascending=False).iloc[0]
+
+symbol = best_choice["symbol"]
+price = best_choice["price"]
+
+qty = int(amount // price)
+
+st.success(f"### ✅ Best Buy for ₹{amount:.0f} is **{symbol}**")
+st.metric("Price", f"₹{price:.2f}")
+st.metric("Quantity you can buy", qty)
+
 # Use floats for min_value and value to avoid StreamlitMixedNumericTypesError
 amount = st.number_input(
     "Enter your amount (₹)",
