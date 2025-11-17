@@ -2,7 +2,7 @@ name: Daily Stock Scan
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # Runs every day at 8:30 AM IST
+    - cron: "0 3 * * *"   # 8:30 AM IST
   workflow_dispatch:
 
 jobs:
@@ -10,24 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Set up Python
+    - name: Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.10"
 
-    - name: Install dependencies
+    - name: Install requirements
       run: pip install -r requirements.txt
 
-    - name: Run daily scan
-      run: python daily_scan.py
+    - name: Generate candidates
+      run: python generate_candidates.py
 
-    - name: Commit updated today_pick.json and candidates.csv
+    - name: Scan best stock
+      run: python scan.py
+
+    - name: Push updated files
       run: |
         git config --global user.name "Swetha-Auto"
         git config --global user.email "actions@github.com"
         git add today_pick.json candidates.csv
-        git commit -m "Daily scan update" || echo "No changes"
+        git commit -m "Daily update" || echo "No changes"
         git push
