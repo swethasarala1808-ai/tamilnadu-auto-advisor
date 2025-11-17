@@ -1,27 +1,32 @@
 import streamlit as st
-import pandas as pd
 import json
+import pandas as pd
 
-st.title("📈 Tamil Nadu Auto Advisor — NSE + BSE")
+st.title("📈 Tamil Nadu Stock Market – Daily Auto Advisor")
 
 try:
     with open("today_pick.json", "r") as f:
-        pick = json.load(f)
-    st.success(f"Today's Best Stock: **{pick['ticker']}**")
-    st.write(f"**Current Price:** ₹{pick['current_price']}")
-    st.write(f"**AI Intraday Score:** {pick['score']}")
+        d = json.load(f)
+
+    st.subheader("📌 Today’s Best Stock to Buy")
+    st.write(f"### {d['ticker']}")
+    st.write(f"**Buy Price (Morning):** ₹{d['buy_price']}")
+    st.write(f"**Expected Profit Today:** {d['expected_profit_percentage']} %")
+
 except:
-    st.warning("Waiting for daily scan to generate today's pick...")
+    st.warning("⚠️ Today’s pick not available yet. Please check after 8:30 AM IST.")
 
 st.subheader("💰 Investment Calculator")
-amount = st.number_input("Enter your amount (₹)", min_value=1.0)
+amt = st.number_input("Enter your amount (₹)", min_value=1.0)
 
-if st.button("Find stock"):
-    try:
-        df = pd.read_csv("candidates.csv")
-        df["can_buy"] = amount // df["price"] if "price" in df else 1
+if amt > 0 and "buy_price" in globals():
+    qty = amt // d["buy_price"]
 
-        best = df.sort_values("score", ascending=False).iloc[0]
-        st.success(f"You should buy **{best['ticker']}**")
-    except:
-        st.error("candidates.csv missing. Wait for daily scan.")
+    if qty <= 0:
+        st.error("Amount too low to buy even one share.")
+    else:
+        final_profit = qty * d["buy_price"] * (d["expected_profit_percentage"] / 100)
+        st.success(
+            f"📌 If you invest **₹{amt}** in **{d['ticker']}**, "
+            f"expected profit today ≈ **₹{round(final_profit, 2)}**"
+        )
