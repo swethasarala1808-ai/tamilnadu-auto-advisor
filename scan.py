@@ -1,44 +1,30 @@
 import yfinance as yf
 import pandas as pd
 import json
-from datetime import datetime
-
-def load_tickers():
-    return pd.read_csv("tickers.csv")
-
-def get_price(ticker):
-    try:
-        data = yf.Ticker(ticker).history(period="1d")
-        if data.empty:
-            return None
-        return float(data["Close"].iloc[-1])
-    except:
-        return None
 
 def scan():
-    df = load_tickers()
-    results = []
+    df = pd.read_csv("candidates.csv")
 
-    for _, row in df.iterrows():
-        ticker = row["ticker"]
+    # Sort by intraday score
+    df = df.sort_values("score", ascending=False)
 
-        price = get_price(ticker)
-        if price is not None:
-            results.append({
-                "ticker": ticker,
-                "price": price,
-                "score": round(price % 100, 2)   # Simple scoring
-            })
+    best = df.iloc[0]
+    ticker = best["ticker"]
 
-    if not results:
-        raise Exception("No prices found!")
+    # Current price
+    price = yf.Ticker(ticker).history(period="1d")["Close"].iloc[-1]
 
-    best = sorted(results, key=lambda x: x["score"], reverse=True)[0]
+    final = {
+        "ticker": ticker,
+        "current_price": float(price),
+        "score": float(best["score"])
+    }
 
     with open("today_pick.json", "w") as f:
-        json.dump(best, f, indent=4)
+        json.dump(final, f, indent=4)
 
-    return best
+    print("✔ Today’s pick saved!")
+    return final
 
 if __name__ == "__main__":
-    print(scan())
+    scan()
