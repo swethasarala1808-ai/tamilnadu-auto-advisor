@@ -1,30 +1,17 @@
 import streamlit as st
 import pandas as pd
 import json
-import yfinance as yf
 
-st.title("📈 Tamil Nadu Stock Market – Daily Auto Advisor")
+st.title("📈 Tamil Nadu Auto Advisor — NSE + BSE")
 
-# Load today’s best stock
 try:
     with open("today_pick.json", "r") as f:
-        data = json.load(f)
-        stock = data["ticker"]
-        buy = data["buy_price"]
-        current = data["current_price"]
-        momentum = data["momentum"]
-        score = data["score"]
+        pick = json.load(f)
+    st.success(f"Today's Best Stock: **{pick['ticker']}**")
+    st.write(f"**Current Price:** ₹{pick['current_price']}")
+    st.write(f"**AI Intraday Score:** {pick['score']}")
 except:
-    st.error("⚠️ Today’s pick not available yet.")
-    stock = None
-
-if stock:
-    st.subheader("📌 Today’s Best Stock to Buy")
-    st.write(f"**Stock:** {stock}")
-    st.write(f"**Buy Price:** ₹{buy}")
-    st.write(f"**Current Price:** ₹{current}")
-    st.write(f"**Momentum:** {momentum}")
-    st.write(f"**AI Score:** {score}")
+    st.warning("Waiting for daily scan to generate today's pick...")
 
 st.subheader("💰 Investment Calculator")
 amount = st.number_input("Enter your amount (₹)", min_value=1.0)
@@ -32,13 +19,9 @@ amount = st.number_input("Enter your amount (₹)", min_value=1.0)
 if st.button("Find stock"):
     try:
         df = pd.read_csv("candidates.csv")
-        df["can_buy"] = (amount // df["latest"]) > 0
-        df = df[df["can_buy"] == True]
+        df["can_buy"] = amount // df["price"] if "price" in df else 1
 
-        if df.empty:
-            st.warning("Amount too low to buy any stock.")
-        else:
-            best = df.sort_values("score", ascending=False).iloc[0]
-            st.success(f"You can buy **{best['ticker']}**")
+        best = df.sort_values("score", ascending=False).iloc[0]
+        st.success(f"You should buy **{best['ticker']}**")
     except:
-        st.error("⚠️ candidates.csv not found. Wait for daily scan.")
+        st.error("candidates.csv missing. Wait for daily scan.")
