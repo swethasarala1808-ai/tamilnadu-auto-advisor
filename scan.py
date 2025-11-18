@@ -87,7 +87,7 @@ if len(results) > 0:
 
     # Save today_pick.json
     with open("data/today_pick.json", "w") as f:
-        json.dump(best, f, indent=4)
+    json.dump(today_pick, f, indent=2)
 else:
     print("No picks found today.")
 
