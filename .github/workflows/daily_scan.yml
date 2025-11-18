@@ -1,5 +1,8 @@
 name: Daily Stock Scan
 
+permissions:
+  contents: write
+
 on:
   workflow_dispatch:
   schedule:
@@ -16,7 +19,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.10
+        python-version: "3.10"
 
     - name: Install dependencies
       run: |
@@ -30,7 +33,7 @@ jobs:
       run: |
         git config --global user.name "github-actions"
         git config --global user.email "actions@github.com"
-        
+
         git add candidates.csv
         git add data/today_pick.json || true
 
