@@ -43,3 +43,11 @@ jobs:
         git add data/today_pick.json data/candidates.csv || true
         git commit -m "Daily pick update" || echo "No changes to commit"
         git push
+    - name: Commit today_pick.json
+      run: |
+        git config --global user.name "Swetha-Auto"
+        git config --global user.email "actions@github.com"
+        git add data/today_pick.json candidates.csv
+        git commit -m "Update today's pick" || echo "No changes to commit"
+        git push
+        
