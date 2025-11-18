@@ -1,13 +1,1 @@
-{
-  "date": "2025-11-18",
-  "best_stock": {
-    "symbol": "BHARTIARTL.BO",
-    "price": 2149.89990234375,
-    "change": 1.7849,
-    "score": 1.784867,
-    "buy_price": 2149.9,
-    "target_price": 2192.9,
-    "stop_loss": 2132.7,
-    "reason": "top_change"
-  }
-}
+{"message": "No pick today"}
