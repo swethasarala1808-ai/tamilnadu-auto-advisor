@@ -2,12 +2,13 @@ name: Daily Stock Scan
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # Runs at 8:30 AM IST
+    - cron: "0 3 * * *"   # 3:00 UTC = 8:30 AM IST
   workflow_dispatch:
 
 jobs:
   scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 180   # allow long runs if scanning full market
 
     steps:
     - name: Checkout
@@ -20,20 +21,25 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install yfinance pandas numpy
+        python -m pip install --upgrade pip
+        pip install yfinance pandas numpy requests
+
+    # Optionally refresh tickers live from NSE/BSE (uncomment to enable)
+    - name: Fetch latest tickers (optional)
+      run: |
+        # Uncomment the next line if you want to refresh tickers each run (may fail if endpoints block)
+        # python fetch_tickers.py
+        echo "Skipping fetch_tickers.py by default. Run it manually if needed."
 
     - name: Run scanner
-      run: python scan.py
+      run: |
+        python scan.py
 
-    - name: Save output
+    - name: Commit data files
       run: |
         mkdir -p data
-        mv today_pick.json data/today_pick.json
-
-    - name: Commit result
-      run: |
         git config --global user.email "bot@example.com"
         git config --global user.name "Swetha-Auto"
-        git add data/today_pick.json
-        git commit -m "Daily Stock Pick Update" || echo "No changes"
+        git add data/today_pick.json data/candidates.csv || true
+        git commit -m "Daily pick update" || echo "No changes to commit"
         git push
