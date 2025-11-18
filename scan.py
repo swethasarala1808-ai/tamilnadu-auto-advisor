@@ -1,60 +1,55 @@
 import yfinance as yf
 import pandas as pd
-import json
 import numpy as np
 
-def expected_intraday_profit(ticker):
+# List of NSE stocks you want to scan
+stocks = ["RELIANCE.NS", "SBIN.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS"]
+
+results = []
+
+for symbol in stocks:
     try:
-        data = yf.download(ticker, period="30d", interval="1d", progress=False)
+        data = yf.download(symbol, period="5d", interval="1d")
 
-        if data.empty:
-            return None
+        # Skip if no data
+        if data is None or len(data) < 2:
+            continue
 
-        data["intraday"] = (data["Close"] - data["Open"]) / data["Open"]
+        # Reset index
+        data = data.reset_index()
 
-        avg_return = data["intraday"].tail(20).mean()      # Last 20 days
-        momentum = (data["Close"].iloc[-1] -
-                    data["Close"].iloc[-5]) / data["Close"].iloc[-5]
+        # Extract last 2 days
+        prev_day = data.iloc[-2]
+        today = data.iloc[-1]
 
-        score = (0.7 * avg_return) + (0.3 * momentum)
-        return round(score * 100, 4)
+        # ---- FIXED COMPARISONS USING .values ----
+        # Example filters (you can adjust logic)
 
-    except:
-        return None
+        # 1. Today's close higher than yesterday
+        cond1 = (today["Close"] > prev_day["Close"])
 
+        # 2. Today’s volume higher than yesterday
+        cond2 = (today["Volume"] > prev_day["Volume"])
 
-def scan():
-    df = pd.read_csv("tickers.csv")
-    results = []
+        # 3. Bullish candle
+        cond3 = (today["Close"] > today["Open"])
 
-    for _, row in df.iterrows():
-        ticker = row["ticker"]
-        score = expected_intraday_profit(ticker)
-
-        if score is not None:
+        # If all conditions match, add stock
+        if cond1 and cond2 and cond3:
             results.append({
-                "ticker": ticker,
-                "score": score
+                "symbol": symbol.replace(".NS", ""),
+                "open": today["Open"],
+                "close": today["Close"],
+                "volume": today["Volume"]
             })
 
-    results = sorted(results, key=lambda x: x["score"], reverse=True)
-    best = results[0]
+    except Exception as e:
+        print(f"Error processing {symbol}: {e}")
 
-    # Current price (for buy price)
-    price = yf.Ticker(best["ticker"]).history(period="1d")["Open"].iloc[-1]
+# Save to CSV
+df = pd.DataFrame(results)
 
-    output = {
-        "ticker": best["ticker"],
-        "buy_price": float(price),
-        "expected_profit_percentage": best["score"]
-    }
+# If no stocks found, still create an empty file (very important)
+df.to_csv("candidates.csv", index=False)
 
-    with open("today_pick.json", "w") as f:
-        json.dump(output, f, indent=4)
-
-    print("✔ Today’s best pick saved!")
-    return output
-
-
-if __name__ == "__main__":
-    scan()
+print("Scan complete. candidates.csv generated.")
