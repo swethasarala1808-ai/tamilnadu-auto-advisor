@@ -126,3 +126,27 @@ def scan_all():
 
 if __name__ == "__main__":
     scan_all()
+import json
+
+# If results exist, choose the best pick
+if len(results) > 0:
+    best = results[0]
+
+    pick = {
+        "symbol": best["symbol"],
+        "open": float(best["open"]),
+        "close": float(best["close"]),
+        "volume": int(best["volume"])
+    }
+
+    # Save to JSON for Streamlit
+    with open("data/today_pick.json", "w") as f:
+        json.dump(pick, f, indent=4)
+
+    print("Today’s pick saved to today_pick.json")
+else:
+    # Create empty pick file
+    with open("data/today_pick.json", "w") as f:
+        json.dump({"message": "No pick today"}, f)
+
+    print("No pick today. Empty file created.")
