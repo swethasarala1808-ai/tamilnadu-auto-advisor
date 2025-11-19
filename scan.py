@@ -1,69 +1,94 @@
+import yfinance as yf
 import pandas as pd
+import numpy as np
 import json
 import os
-from datetime import datetime
-from twilio.rest import Client
 
-# ============================
-# 1. Generate dummy stock list
-# ============================
+print("🚀 Starting Scan")
 
-stock_list = [
-    {"symbol": "RELIANCE", "price": 2950, "score": 92},
-    {"symbol": "HDFCBANK", "price": 1510, "score": 89},
-    {"symbol": "TCS", "price": 3920, "score": 88},
-]
-
-df = pd.DataFrame(stock_list)
-
-# ============================
-# 2. Ensure data folder exists
-# ============================
-
+# Ensure data folder exists
 os.makedirs("data", exist_ok=True)
 
-# ============================
-# 3. Save candidates.csv
-# ============================
+# Load tickers
+df = pd.read_csv("tickers.csv")
+tickers = df["ticker"].tolist()
+print(f"Loaded {len(tickers)} tickers")
 
-df.to_csv("candidates.csv", index=False)
+results = []
+BATCH_SIZE = 50
 
-# ============================
-# 4. Today’s pick
-# ============================
+for i in range(0, len(tickers), BATCH_SIZE):
+    batch = tickers[i:i + BATCH_SIZE]
+    print(f"\n🔎 Processing batch {i//BATCH_SIZE+1}: {len(batch)} tickers")
 
-today_pick = df.sort_values("score", ascending=False).iloc[0].to_dict()
+    try:
+        data = yf.download(
+            batch,
+            period="2d",
+            interval="1d",
+            progress=False,
+            threads=True
+        )
+    except Exception as e:
+        print("❌ Download error:", e)
+        continue
 
-with open("data/today_pick.json", "w") as f:
-    json.dump({
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "top_stock": today_pick
-    }, f, indent=2)
+    # Fix single ticker format
+    if isinstance(data.columns, pd.Index):
+        data = pd.concat({batch[0]: data}, axis=1)
 
-print("Pick generated:", today_pick)
+    # Evaluate each ticker
+    for ticker in batch:
+        try:
+            d = data[ticker]
 
-# ============================
-# 5. SMS sending (Twilio)
-# ============================
+            if len(d) < 2:
+                print(f"⚠️ Not enough data for {ticker}")
+                continue
 
-ACCOUNT_SID = os.getenv("TWILIO_SID")
-AUTH_TOKEN = os.getenv("TWILIO_AUTH")
-FROM_NUMBER = os.getenv("TWILIO_FROM")
-TO_NUMBER = os.getenv("MY_PHONE")
+            prev_day = d.iloc[-2]
+            today = d.iloc[-1]
 
-client = Client(ACCOUNT_SID, AUTH_TOKEN)
+            cond1 = today["Close"] > prev_day["Close"]
+            cond2 = today["Volume"] > prev_day["Volume"]
+            cond3 = today["Close"] > today["Open"]
 
-sms_message = f"""
-📈 Tamil Nadu Stock Advisor
-Today's Top Stock: {today_pick['symbol']}
-Price: ₹{today_pick['price']}
-Score: {today_pick['score']}
-"""
+            if cond1 and cond2 and cond3:
+                score = (today["Close"] - today["Open"]) / today["Open"]
 
-message = client.messages.create(
-    body=sms_message,
-    from_=FROM_NUMBER,
-    to=TO_NUMBER
-)
+                results.append({
+                    "symbol": ticker,
+                    "open": float(today["Open"]),
+                    "close": float(today["Close"]),
+                    "volume": int(today["Volume"]),
+                    "score": float(score)
+                })
 
-print("SMS sent successfully!")
+                print(f"✔ MATCH: {ticker} ({round(score*100, 2)}%)")
+
+            else:
+                print(f"❌ No match: {ticker}")
+
+        except Exception as e:
+            print(f"❌ Error {ticker}: {e}")
+
+# Save candidates.csv
+df_out = pd.DataFrame(results)
+df_out.to_csv("candidates.csv", index=False)
+print("\n📄 candidates.csv saved.")
+
+# Save best pick
+if len(results) > 0:
+    best = max(results, key=lambda x: x["score"])
+    print("🏆 Best pick:", best["symbol"])
+
+    with open("data/today_pick.json", "w") as f:
+        json.dump(best, f, indent=4)
+
+else:
+    print("❌ No picks found today.")
+
+    with open("data/today_pick.json", "w") as f:
+        json.dump({"message": "No pick today"}, f)
+
+print("✅ today_pick.json updated")
