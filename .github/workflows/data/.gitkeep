@@ -1,6 +1,0 @@
-data/
-   .gitkeep
-scan.py
-tickers.csv
-requirements.txt
-.github/workflows/daily_scan.yml
