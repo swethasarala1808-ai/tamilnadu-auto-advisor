@@ -1,57 +1,67 @@
 import yfinance as yf
 import pandas as pd
 import json
-from datetime import datetime
+import os
 
 def get_best_stock():
-    # Example NIFTY 50 list (you can add more)
-    stocks = [
-        "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS",
-        "ICICIBANK.NS", "SBIN.NS", "KOTAKBANK.NS", "BAJFINANCE.NS"
-    ]
-    
-    best_stock = None
+    df = pd.read_csv("tickers.csv")
+    tickers = df["ticker"].tolist()
+
+    print(f"Loaded {len(tickers)} tickers")
+
+    best_ticker = None
     best_change = -999
 
-    for symbol in stocks:
-        data = yf.download(symbol, period="2d", interval="1d")
+    for ticker in tickers:
+        try:
+            data = yf.download(ticker, period="2d", interval="1d", progress=False)
 
-        if len(data) < 2:
-            continue
+            # Need exactly two rows
+            if len(data) < 2:
+                continue
 
-        yesterday = data["Close"].iloc[-2]
-        today = data["Close"].iloc[-1]
-        change_percent = ((today - yesterday) / yesterday) * 100
+            # Extract values (float)
+            prev_close = float(data["Close"].iloc[-2])
+            today_close = float(data["Close"].iloc[-1])
+            today_open = float(data["Open"].iloc[-1])
+            today_vol = float(data["Volume"].iloc[-1])
+            prev_vol = float(data["Volume"].iloc[-2])
 
-        if change_percent > best_change:
-            best_change = change_percent
-            best_stock = {
-                "symbol": symbol.replace(".NS", ""),
-                "change": round(change_percent, 2),
-                "price": round(today, 2)
-            }
+            # Conditions
+            if today_close > prev_close and today_vol > prev_vol and today_close > today_open:
+                change_percent = ((today_close - today_open) / today_open) * 100
 
-    return best_stock
+                if change_percent > best_change:
+                    best_change = change_percent
+                    best_ticker = {
+                        "symbol": ticker,
+                        "open": today_open,
+                        "close": today_close,
+                        "volume": today_vol,
+                        "change": round(change_percent, 2)
+                    }
+
+        except Exception as e:
+            print(f"Error processing {ticker}: {e}")
+
+    return best_ticker
 
 
 def main():
-    pick = get_best_stock()
+    result = get_best_stock()
 
-    if pick:
-        output = {
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "symbol": pick["symbol"],
-            "change": pick["change"],
-            "price": pick["price"],
-            "message": f"Best stock today is {pick['symbol']} with {pick['change']}% growth."
-        }
+    # Ensure data folder exists
+    if not os.path.exists("data"):
+        os.makedirs("data")
+
+    if result:
+        print("Best stock:", result["symbol"])
+        with open("data/today_pick.json", "w") as f:
+            json.dump(result, f, indent=4)
     else:
-        output = {"message": "No pick today"}
-
-    with open("today_pick.json", "w") as f:
-        json.dump(output, f)
-
-    print("today_pick.json updated")
+        print("No pick today")
+        with open("data/today_pick.json", "w") as f:
+            json.dump({"message": "No pick today"}, f)
 
 
 if __name__ == "__main__":
